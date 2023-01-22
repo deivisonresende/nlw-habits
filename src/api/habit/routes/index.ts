@@ -81,6 +81,33 @@ export default async (app: FastifyInstance) => {
         }
       })
     }
-   
   });
-};
+
+  app.get('/summary', async (request) => {
+    const summary = await prisma.$queryRaw`
+      SELECT 
+        D.id, 
+        D.date,
+        (
+          SELECT 
+            cast(count(*) as float)
+          FROM day_habit DH
+          WHERE DH.day_id = D.id
+        ) as completed,
+        (
+          SELECT 
+            cast(count(*) as float)
+          FROM habit_week_days HDW
+          JOIN habits H
+            ON H.id = HDW.habit_id
+          WHERE 
+            HDW.week_day = cast(strftime('%w', D.date / 1000, 'unixepoch') as int)
+            AND
+              H.created_at <= D.date
+        ) as amount
+      FROM days D
+    `
+
+    return summary
+  })
+}; 
