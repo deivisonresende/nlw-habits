@@ -28,7 +28,7 @@ export default async (app: FastifyInstance) => {
 
     const day = await prisma.day.findUnique({
       where: {
-        date: parsedDate.toDate()
+        date
       },
       include: {
         dayHabits: true
