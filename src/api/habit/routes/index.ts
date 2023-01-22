@@ -22,4 +22,65 @@ export default async (app: FastifyInstance) => {
       }
     })
   });
+
+  app.patch('/:id/toggle', async (request, reply) => {
+    const validator = z.object({
+      id: z.string().uuid()
+    });
+
+    const { id } = validator.parse(request.params);
+
+    const today = dayjs().startOf('day').toDate();
+
+    let day = await prisma.day.findUnique({
+      where: {
+        date: today
+      }
+    });
+
+    const habitWeekDays = await prisma.habitWeekDays.findMany({
+      where: {
+        habit_id: id
+      }
+    })
+ 
+    const isHabitAvailableToday = habitWeekDays.some(({ week_day}) => week_day === today.getDay())
+
+    if(!isHabitAvailableToday) return reply.status(400).send({
+      message: 'Hábito não disponível para para este dia da semana'
+    })
+
+    if(!day){
+      day = await prisma.day.create({
+        data: {
+          date: today
+        }
+      })
+    }
+
+    const dayHabit = await prisma.dayHabit.findUnique({
+      where: {
+        day_id_habit_id: {
+          day_id: day.id,
+          habit_id: id
+        }
+      }
+    })
+
+    if(dayHabit){
+      await prisma.dayHabit.delete({
+        where: {
+          id: dayHabit.id
+        }
+      })
+    } else {
+      await prisma.dayHabit.create({
+        data: {
+          day_id: day.id,
+          habit_id: id
+        }
+      })
+    }
+   
+  });
 };
